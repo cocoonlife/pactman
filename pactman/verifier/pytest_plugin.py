@@ -13,6 +13,10 @@ def pytest_addoption(parser):
                      help="pact JSON files to verify (wildcards allowed)")
     parser.addoption("--pact-broker-url", default='',
                      help="pact broker URL")
+    parser.addoption("--pact-broker-username", default=None,
+                     help="Pact Broker username")
+    parser.addoption("--pact-broker-password", default=None,
+                     help="Pact Broker password")
     parser.addoption("--pact-provider-name", default=None,
                      help="provider pact name")
     parser.addoption("--pact-publish-results", action="store_true", default=False,
@@ -23,6 +27,16 @@ def pytest_addoption(parser):
 
 def get_broker_url(config):
     return config.getoption('pact_broker_url') or os.environ.get('PACT_BROKER_URL')
+
+
+def get_broker_username(config):
+    return config.getoption('pact_broker_username') or \
+           os.environ.get('PACT_BROKER_USERNAME')
+
+
+def get_broker_password(config):
+    return config.getoption('pact_broker_password') or \
+           os.environ.get('PACT_BROKER_PASSWORD')
 
 
 # add the pact broker URL to the pytest output if running verbose
@@ -83,6 +97,9 @@ def test_id(identifier):
 def pytest_generate_tests(metafunc):
     if 'pact_verifier' in metafunc.fixturenames:
         broker_url = get_broker_url(metafunc.config)
+        broker_username = get_broker_username(metafunc.config)
+        broker_password = get_broker_password(metafunc.config)
+
         if not broker_url:
             pact_files = get_pact_files(metafunc.config.getoption('pact_files'))
             if not pact_files:
@@ -92,7 +109,11 @@ def pytest_generate_tests(metafunc):
             provider_name = metafunc.config.getoption('pact_provider_name')
             if not provider_name:
                 raise ValueError('--pact-broker-url requires the --pact-provider-name option')
-            broker_pacts = BrokerPacts(provider_name, pact_broker_url=broker_url, result_factory=PytestResult)
+            broker_pacts = BrokerPacts(provider_name,
+                                       pact_broker_url=broker_url,
+                                       pact_broker_username=broker_username,
+                                       pact_broker_password=broker_password,
+                                       result_factory=PytestResult)
             metafunc.parametrize("pact_verifier", flatten_pacts(broker_pacts.consumers()),
                                  ids=test_id, indirect=True)
 

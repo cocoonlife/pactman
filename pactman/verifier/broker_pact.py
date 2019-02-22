@@ -6,6 +6,8 @@ import json
 import logging
 import os
 import urllib.parse
+import requests
+from requests.auth import HTTPBasicAuth
 
 import semver
 from restnavigator import Navigator
@@ -22,11 +24,21 @@ def pact_id(param):
 
 
 class BrokerPacts:
-    def __init__(self, provider_name, pact_broker_url=None, result_factory=LoggedResult):
+    def __init__(self, provider_name, pact_broker_url=None,
+                 pact_broker_username=None, pact_broker_password=None,
+                 result_factory=LoggedResult):
         self.provider_name = provider_name
         self.pact_broker_url = pact_broker_url or os.environ.get('PACT_BROKER_URL')
         if not self.pact_broker_url:
             raise ValueError('pact broker URL must be specified')
+        if pact_broker_username and pact_broker_password:
+            self.pact_broker_auth = (pact_broker_username,
+                                     pact_broker_password)
+        else:
+            if pact_broker_username or pact_broker_password:
+                raise ValueError("Both username and password must be set when "
+                                 "using a Pact Broker with auth")
+            self.pact_broker_auth = None
         self.result_factory = result_factory
 
     def get_broker_navigator(self):
@@ -35,7 +47,10 @@ class BrokerPacts:
         # pact broker URL pointing to a different resource)
         url_parts = urllib.parse.urlparse(self.pact_broker_url)
         url = f'{url_parts.scheme}://{url_parts.netloc}/'
-        return Navigator.hal(url, default_curie='pb')
+        nav = Navigator.hal(url, default_curie='pb')
+        if self.pact_broker_auth:
+            nav.authenticate(self.pact_broker_auth)
+        return nav
 
     def consumers(self):
         nav = self.get_broker_navigator()
