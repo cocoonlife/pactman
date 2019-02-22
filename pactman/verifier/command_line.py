@@ -48,6 +48,12 @@ parser.add_argument('provider_setup_url', metavar='PROVIDER_SETUP_URL',
 parser.add_argument('-b', '--broker-url', default=None,
                     help='the URL of the pact broker; may also be provided in PACT_BROKER_URL environment variable')
 
+parser.add_argument('-bu', '--broker-username', default=None,
+                    help='username required for accessing the Pact Broker')
+
+parser.add_argument('-bp', '--broker-password', default=None,
+                    help='password required for accessing the Pact Broker')
+
 parser.add_argument('-l', '--local-pact-file', default=None,
                     help='path to a local pact file')
 
@@ -130,7 +136,9 @@ def main():
     if args.local_pact_file:
         pacts = [BrokerPact.load_file(args.local_pact_file, result_factory)]
     else:
-        pacts = BrokerPacts(args.provider_name, args.broker_url, result_factory).consumers()
+        pacts = BrokerPacts(args.provider_name, args.broker_url,
+                            args.broker_username, args.broker_password,
+                            result_factory).consumers()
     success = True
     for pact in pacts:
         if args.consumer and pact.consumer != args.consumer:
